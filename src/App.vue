@@ -1,16 +1,24 @@
 <script setup lang="ts">
-import { RouterLink, RouterView } from 'vue-router'
+import { RouterLink, RouterView } from 'vue-router';
+import BlockfrostView from "./views/BlockfrostView.vue";
+import { stakingStore } from './stores/staking';
+
+const staking = stakingStore();
 </script>
 
 <template>
-  <header>
+  <header v-if="staking.blockfrost">
     <nav>
-        <RouterLink to="/">Owner</RouterLink>
-        <RouterLink to="/about">Beneficient</RouterLink>
+        <RouterLink to="/">Blockfrost</RouterLink>
+        <RouterLink to="/wallets">Wallets</RouterLink>
+        <RouterLink to="/contracts">Contract</RouterLink>
+        <RouterLink v-if="staking.contract" to="/owner">Owner</RouterLink>
+        <RouterLink v-if="staking.contract" to="/beneficient">Beneficient</RouterLink>
       </nav>
   </header>
 
-  <RouterView />
+  <RouterView v-if="staking.blockfrost" />
+  <BlockfrostView v-if="!staking.blockfrost" />
 </template>
 
 <style scoped>

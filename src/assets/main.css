@@ -9,8 +9,111 @@
 }
 
 a,
-.green {
+.accent {
   text-decoration: none;
-  color: hsla(160, 100%, 37%, 1);
+  color: var(--color-accent);
   transition: 0.4s;
+}
+a:hover, .accent-focus {
+  text-decoration: none;
+  color: var(--color-accent-focus);
+  transition: 0.4s;
+}
+
+.flex-container {
+  display: flex;
+}
+
+.side {
+  width: 200px;
+  padding-right: 25px;
+  overflow-wrap: break-word;
+  border-right: 3px solid var(--vt-c-accent-dark);
+}
+.main {
+  border-left: 3px solid var(--vt-c-accent-light);
+  flex-grow: 1;
+}
+.main h1, .main h2, .side h2 {
+  width: 100%;
+  margin: 25px;
+  color: var(--color-accent);
+}
+.main h1 small, .main h2 small, .side h2 small {
+  display: block;
+  color: var(--color-heading);
+  font-size: 0.5em;
+}
+.main p {
+  padding: 25px;
+  margin-left: 10px;
+}
+
+.main .upper .btn {
+  padding: 20px;
+}
+
+.block {
+  padding: 25px;
+  margin-left: 10px;
+  margin-bottom: 20px;
+  border-radius: 5px var(--rounded) 5px;
+  background: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+}
+.block:hover {
+  border: 1px solid var(--color-border-hover);
+}
+.side input {
+  width: 100%;
+}
+
+.selected {
+  background-color: var(--color-background-soft);
+  border: 1px solid var(--color-border);
+}
+
+table th {
+  text-align: left;
+}
+
+table thead tr {
+  border-bottom: 1px solid var(--color-accent);
+  color: var(--color-accent);
+  padding: 5px;
+}
+
+.stripped tbody tr:nth-child(even) {
+  background-color: var(--color-background);
+}
+
+.stripped tbody tr:nth-child(odd) {
+  background-color: var(--color-background-mute);
+}
+.stripped tbody tr:hover {
+  background-color: var(--color-accent);
+  color: var(--color-background);
+}
+
+input, select, button, .btn {
+  background-color: var(--color-background-soft);
+  color: var(--color-accent);
+  border: 1px solid var(--color-accent);
+  padding: 5px;
+}
+
+.main table input {
+  border: 1px solid var(--color-background);
+  background-color: var(--color-background-mute);
+}
+
+.rounded {
+  border-radius: 0 var(--rounded) 0;
+  padding: 20px;
+}
+
+.btn:hover {
+  background-color: var(--color-accent);
+  color:  var(--color-background);
+  cursor: pointer;
 }

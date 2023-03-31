@@ -2,24 +2,22 @@ import {
   applyDoubleCborEncoding,
   applyParamsToScript,
   Blockfrost,
+  C,
   Constr,
   Data,
   fromHex,
   fromText,
   Lucid,
-  MintingPolicy,
-  OutRef,
-  PolicyId,
-  SpendingValidator,
+  type MintingPolicy,
+  type OutRef,
+  type PolicyId,
+  type SpendingValidator,
   toHex,
-  TxHash,
+  type TxHash,
   TxSigned,
-  Unit,
+  type Unit,
 } from "lucid-cardano";
-import * as cbor from "cbor";
-import plutus from "@/plutus.json";
-
-console.log(plutus);
+import plutus from "./plutus.json";
 
 export const OWNER = "owner";
 export const BENEFICIENT = "beneficient";
@@ -72,8 +70,6 @@ export type Leaf = {
 };
 
 export type Context = {
-  wallets: Record<string, Creadential>;
-  beneficient: Creadential;
   contract: Contract | null;
   database: Leaf[];
 };
@@ -152,23 +148,7 @@ export type DatumLeafType = {
   amount: bigint;
   next: string | null;
 };
-/*
-export type PlutusPreamble = {
-  title: string;
-  description: string;
-  version: string;
-  plutusVersion: string;
-  licence: string;
-};
-export type PlutusValidator = {
-  title: string;
-  compiledCode: string;
-};
-export type Plutus = {
-  preamble: PlutusPreamble;
-  validators: Array<PlutusValidator>;
-};
-*/
+
 export async function loadContext(): Promise<Context> {
   const data = {} as Context; //JSON.parse(await Deno.readTextFile("context.json"));
   if (data.contract) {
@@ -192,16 +172,79 @@ export async function loadContext(): Promise<Context> {
   return data;
 }
 
-export async function loadWallet(sig: string): Promise<Lucid> {
-  const lucid = await Lucid.new(
-    new Blockfrost(
-      "https://cardano-preview.blockfrost.io/api/v0",
-      "previewmesUawO2pPjx7zOA7Q2u1kYI4GdZLYsl",
-    ),
-    "Preview",
+export async function getWalletHash(lucid: Lucid): Promise<string> {
+  const address = await lucid.wallet.address();
+  if (address) {
+    const details = lucid.utils.getAddressDetails(address);
+    if (details.paymentCredential) {
+      return details.paymentCredential.hash;
+    }
+  }
+  throw new Error("Not walid wallet");
+}
+
+export async function readValidator(
+  debug: boolean,
+): Promise<SpendingValidator> {
+  const validator = plutus.validators.find((v) =>
+    v.title === "staking.staking"
   );
-  lucid.selectWalletFromPrivateKey(sig);
-  return lucid;
+  const script = applyParamsToScript(validator!.compiledCode, [
+    debug ? new Constr(1, []) : new Constr(0, []),
+  ]);
+
+  return {
+    type: "PlutusV2",
+    script: applyDoubleCborEncoding(script),
+  };
+}
+
+export async function createValidatePolicy(
+  lucid: Lucid,
+  debug: boolean,
+): Promise<MintingPolicy> {
+  const script_hash = lucid.utils.getAddressDetails(
+    lucid.utils.validatorToAddress(
+      await readValidator(debug),
+    ),
+  ).paymentCredential?.hash!;
+  const validator = plutus.validators.find((v) => v.title === "staking.asset");
+  const script = applyParamsToScript(validator!.compiledCode, [
+    script_hash,
+    fromText(VALIDATOR),
+  ]);
+
+  return {
+    type: "PlutusV2",
+    script: applyDoubleCborEncoding(script),
+  };
+}
+
+export async function createMintingPolicy(
+  lucid: Lucid,
+): Promise<MintingPolicy> {
+  const address_hash = await getWalletHash(lucid);
+
+  const validator = plutus.validators.find((v) =>
+    v.title === "staking.minting"
+  );
+  const script = applyParamsToScript(validator!.compiledCode, [
+    address_hash,
+  ]);
+
+  return {
+    type: "PlutusV2",
+    script: applyDoubleCborEncoding(script),
+  };
+}
+
+export function hash(data: string): string {
+  return toHex(C.hash_blake2b256(fromHex(data)));
+}
+
+export function hashDatumMain(datum: DatumMainType): string {
+  const data = datum.validate.policyId + datum.validate.name + datum.policyId;
+  return hash(data);
 }
 
 export class Stake {
@@ -278,78 +321,6 @@ export class Stake {
     throw new Error("Bad database consistency");
   }
 
-  async getWalletHash(lucid: Lucid): Promise<string> {
-    const address = await lucid.wallet.address();
-    if (address) {
-      const details = lucid.utils.getAddressDetails(address);
-      if (details.paymentCredential) {
-        return details.paymentCredential.hash;
-      }
-    }
-    throw new Error("Not walid wallet");
-  }
-
-  async createNFTPolicy(lucid: Lucid): Promise<MintingPolicy> {
-    const { paymentCredential } = lucid.utils.getAddressDetails(
-      await lucid.wallet.address(),
-    );
-
-    return lucid.utils.nativeScriptFromJson({
-      type: "all",
-      scripts: [
-        {
-          type: "sig",
-          keyHash: paymentCredential?.hash!,
-        },
-      ],
-    });
-  }
-
-  async createValidatePolicy(
-    lucid: Lucid,
-    debug: boolean,
-  ): Promise<MintingPolicy> {
-    const script_hash = lucid.utils.getAddressDetails(
-      lucid.utils.validatorToAddress(
-        await this.readValidator(debug),
-      ),
-    ).paymentCredential?.hash!;
-    const validator = plutus.validators.find((v) =>
-      v.title === "staking.asset"
-    );
-    const script = applyParamsToScript(validator!.compiledCode, [
-      script_hash,
-      fromText(VALIDATOR),
-    ]);
-
-    return {
-      type: "PlutusV2",
-      script: applyDoubleCborEncoding(script),
-    };
-  }
-
-  async readValidator(debug: boolean): Promise<SpendingValidator> {
-    const validator = plutus.validators.find((v) =>
-      v.title === "staking.staking"
-    );
-    const script = applyParamsToScript(validator!.compiledCode, [
-      debug ? new Constr(1, []) : new Constr(0, []),
-    ]);
-
-    return {
-      type: "PlutusV2",
-      script: applyDoubleCborEncoding(script),
-    };
-    /*
-    const validator =
-      JSON.parse(await Deno.readTextFile("plutus.json")).validators[0];
-    return {
-      type: "PlutusV2",
-      script: toHex(cbor.encode(fromHex(validator.compiledCode))),
-    };
-    */
-  }
-
   calculateReward(main: DatumMainType, leaf: DatumLeafType): bigint {
     const end = Math.min(
       Number(main.timeout), // Should be bigger then leaf
@@ -417,13 +388,13 @@ export class Stake {
     lovelace: bigint,
     max: bigint,
   ): Promise<TxSigned> {
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = owner.utils.validatorToAddress(validator);
-    const validatePolicy = await this.createValidatePolicy(owner, debug);
+    const validatePolicy = await createValidatePolicy(owner, debug);
     const validatePolicyId = owner.utils.mintingPolicyToId(validatePolicy);
 
     const datumData: DatumMainType = {
-      owner: await this.getWalletHash(owner),
+      owner: await getWalletHash(owner),
       validate: {
         policyId: validatePolicyId,
         name: fromText(VALIDATOR),
@@ -489,7 +460,7 @@ export class Stake {
 
     //const redeemer = Data.to(new Constr(6, []));
     const redeemer = Data.to(new Constr(4, [now]));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = owner.utils.validatorToAddress(validator);
     const query = [{
       txHash: this.ctx.contract.utxo.txHash,
@@ -544,7 +515,7 @@ export class Stake {
         .mintAssets({
           [validateUnit]: validationMint,
         }, Data.to(new Constr(0, [])))
-        .attachMintingPolicy(await this.createValidatePolicy(owner, debug));
+        .attachMintingPolicy(await createValidatePolicy(owner, debug));
     }
     const tx = await txBuilder
       .payToContract(contractAddress, {
@@ -570,7 +541,7 @@ export class Stake {
     }
 
     const redeemer = Data.to(new Constr(5, []));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const collect: Array<OutRef> = [{
       txHash: this.ctx.contract.utxo.txHash,
       outputIndex: Number(this.ctx.contract.utxo.outputIndex),
@@ -619,7 +590,7 @@ export class Stake {
 
     const redeemer = Data.to(new Constr(0, []));
     // const redeemer = Data.to(new Constr(6, []));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = beneficient.utils.validatorToAddress(validator);
 
     const contract = this.ctx.contract;
@@ -645,7 +616,7 @@ export class Stake {
       name,
       policyId: contract.datum.policyId,
       owner: contract.datum.owner,
-      beneficient: await this.getWalletHash(beneficient),
+      beneficient: await getWalletHash(beneficient),
       validate: contract.datum.validate,
       start: this.calculateStart(),
       expiration: this.calculateExpiration(contract.datum),
@@ -740,7 +711,7 @@ export class Stake {
     // Redemer for payout must have current timestamp
     //const redeemer = Data.to(new Constr(1, [now]));
     const redeemer = Data.to(new Constr(6, []));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = beneficient.utils.validatorToAddress(validator);
 
     const contract = this.ctx.contract;
@@ -871,7 +842,7 @@ export class Stake {
 
     const redeemer = Data.to(new Constr(2, []));
     //const redeemer = Data.to(new Constr(6, []));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = beneficient.utils.validatorToAddress(validator);
 
     const contract = this.ctx.contract;
@@ -953,7 +924,7 @@ export class Stake {
 
     const redeemer = Data.to(new Constr(3, []));
     //const redeemer = Data.to(new Constr(6, []));
-    const validator = await this.readValidator(debug);
+    const validator = await readValidator(debug);
     const contractAddress = owner.utils.validatorToAddress(validator);
 
     const contract = this.ctx.contract;
