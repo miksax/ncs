@@ -45,7 +45,7 @@ pub fn check_datum_no_update(input: common.DatumMain, output: common.DatumMain) 
       input.owner == output.owner,
       input.validate == output.validate,
       input.policy_id == output.policy_id,
-      input.timeout == output.timeout,
+      input.expiration == output.expiration,
       input.reward == output.reward,
       input.lovelace == output.lovelace,
     ],

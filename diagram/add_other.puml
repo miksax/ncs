@@ -1,0 +1,127 @@
+@startuml Inputs
+allowmixing
+skinparam sameClassWidth true
+skinparam packageStyle rectangle
+top to bottom direction
+'!theme toy
+'skinparam ranksep 5
+'skinparam nodesep 60
+'left to right direction
+
+package Before {
+
+    map "Main" as BeforeMain #ffff00 {
+        First => Apple
+        ValidationToken => 3
+
+    }
+
+    map "Leaf" as BeforeApple #ffff00 {
+        Name => Apple
+        Next => Orange
+        ValidationToken => 1
+    }
+
+    map "Leaf" as BeforeOrange {
+        Name => Orange
+        Next => None
+        ValidationToken => 1
+
+    }
+}
+
+package New {
+    map "New Leaf" as NewBanana #00ff00 {
+        Name => Banana
+        Next => Orange
+        ValidationToken => 0
+    }
+}
+
+package Transaction {
+    package "Input UTxOs" as Inputs {
+        map "Main" as InputMain #ffff00 {
+            First => Apple
+            ValidationToken => 3
+        }
+        map "Leaf" as InputApple #ffff00 {
+            Name => Apple
+            Next => Orange
+            ValidationToken => 1
+        }
+        map "Beneficient" as InputBeneficient {
+            NFT Token => 1
+        }
+    }
+
+    package "Output UTxOs" as Outputs {
+        map "Main" as OutputMain #ffff00 {
+            First => Apple
+            ValidationToken => 2
+        }
+
+        map "Leaf" as OutputApple #ffff00 {
+            Name => Apple
+            Next => Banana
+            ValidationToken => 1
+        }
+
+        map "Leaf" as OutputBanana #00ff00 {
+            Name => Banana
+            Next => Orange
+            ValidationToken => 1
+        }
+
+        map "Beneficient" as OutputBeneficient {
+            NFT Token => 1
+        }
+    }
+}
+
+package After {
+
+    map "Main" as AfterMain #ffff00 {
+        First => Apple
+        ValidationToken => 2
+    }
+
+    map "Leaf" as AfterApple #ffff00 {
+        Name => Apple
+        Next => Banana
+        ValidationToken => 1
+    }
+
+    map "Leaf" as AfterBanana #00ff00 {
+        Name => Banana
+        Next => Orange
+        ValidationToken => 1
+    }
+
+    map "Leaf" as AfterOrange {
+        Name => Orange
+        Next => None
+        ValidationToken => 1
+
+    }
+}
+
+BeforeApple -> BeforeOrange
+BeforeApple -> InputApple
+NewBanana ---> OutputBanana
+NewBanana -> BeforeOrange
+
+BeforeMain --> InputMain
+InputMain --> OutputMain
+InputApple --> OutputApple
+OutputMain --> AfterMain
+InputBeneficient --> OutputBeneficient
+
+
+OutputApple -> OutputBanana
+OutputApple -> AfterApple
+OutputBanana -> AfterBanana
+
+AfterApple -> AfterBanana
+AfterBanana -> AfterOrange
+
+@enduml

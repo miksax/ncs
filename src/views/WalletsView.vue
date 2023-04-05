@@ -17,10 +17,12 @@
                 <input v-model="newWallet">
                 <button @click="create(newWallet)" class="btn">Create</button>
             </div>
+            <br />
+            <button @click="reload()" class="btn">Reload</button>
         </div>
 
         <div v-if="selected" class="main">
-            <h1>Wallet {{ selected }} <small>{{ stakingStore.addresses[selected] }}</small></h1>
+            <h1>Wallet {{ selected }} <small><CardanoScan type="address" :value="stakingStore.addresses[selected]"></CardanoScan></small></h1>
             <div class="block">
                 <div style="float: right;">
                     <div class="upper">
@@ -42,7 +44,7 @@
                         </thead>
                         <tbody>
                             <tr v-for="asset in assets" :key="asset.unit">
-                                <td>{{ asset.policyId }}</td>
+                                <td><CardanoScan type="tokenPolicy" :value="asset.policyId"></CardanoScan></td>
                                 <td>{{ asset.name }}</td>
                                 <td @click="sendAssets[asset.unit] = asset.amount" style="cursor: pointer;">{{ asset.amount }}</td>
                                 <td><input v-model.number="sendAssets[asset.unit]" type="number"></td>
@@ -118,6 +120,7 @@
 import { mapStores } from 'pinia'
 import { stakingStore } from '../stores/staking'
 import AddressSelect from '../components/AddressSelect.vue'
+import CardanoScan from '../components/CardanoScan.vue'
 
 import {
     fromUnit,
@@ -138,7 +141,7 @@ export default {
         }
     },
     props: ["selected"],
-    components: { AddressSelect },
+    components: { AddressSelect, CardanoScan},
     computed: {
         ...mapStores(stakingStore),
         list() {
@@ -184,6 +187,9 @@ export default {
                     this.sendAssets[asset.unit] = asset.amount;
                 }
             }
+        },
+        async reload() {
+            await this.stakingStore.loadWallets();
         },
         async send() {
             console.log(this.selected, this.toAddress, this.sendAssets);

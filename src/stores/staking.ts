@@ -13,8 +13,9 @@ import {
   toHex,
   type Unit,
   type UTxO,
+  datumJsonToCbor,
 } from "lucid-cardano";
-import { createMintingPolicy, getWalletHash, type Validate } from "../staking";
+import { createMintingPolicy, getWalletHash, hashDatumMain, readValidator, type Contract, type Leaf, DatumMain, DatumLeaf, type Validate, databaseSort } from "../staking";
 
 type Filter = {
   owner: string;
@@ -25,6 +26,7 @@ type Filter = {
 };
 
 type Store = {
+  debug: boolean,
   blockfrostApi: string;
   blockfrostToken: string;
   blockfrostNetwork: Network;
@@ -54,6 +56,7 @@ export const stakingStore = defineStore("staking", {
       return data;
     } else {
       return {
+        debug: true,
         blockfrostApi: "",
         blockfrostToken: "",
         blockfrostNetwork: "Preview",
@@ -67,7 +70,7 @@ export const stakingStore = defineStore("staking", {
     }
   },
   getters: {
-    blockfrost(state) {
+    isBlockfrostSetup(state) {
       return state.blockfrostApi && state.blockfrostNetwork &&
         state.blockfrostToken &&
         "owner" in state.keys && "staker" in state.keys && state.keys.owner &&
@@ -86,15 +89,52 @@ export const stakingStore = defineStore("staking", {
       };
     },
     contractList(state) {
-      return [];
-    },
-    // Filter contrcat from UTxOs
-    contract(state) {
-      return false;
-    },
-    // Filter leves from UTxO
-    database(state) {
-      return {};
+      const contractList: Contract[] = [];
+      for(const utxoMain of state.utxos) {
+        if(utxoMain.outputIndex == 0 && utxoMain.datum) {
+          const datumMain = Data.from<DatumMain>(utxoMain.datum, DatumMain);
+          if(datumMain) {
+            const contract = {
+              hash: hashDatumMain(datumMain),
+              utxo: utxoMain,
+              datum: {
+                owner: datumMain.owner,
+                validate: datumMain.validate,
+                policyId: datumMain.policyId,
+                expiration: BigInt(datumMain.expiration),
+                reward: {
+                  name: datumMain.reward.name,
+                  policyId: datumMain.reward.policyId,
+                  amount: BigInt(datumMain.reward.amount),
+                  time: BigInt(datumMain.reward.time),
+                  timeout: BigInt(datumMain.reward.timeout),
+                },
+                lovelace: BigInt(datumMain.lovelace),
+                count: BigInt(datumMain.count),
+                first: datumMain.first
+              },
+              database: []
+
+            } as Contract;
+
+            for (const utxoLeaf of state.utxos) {
+              if(utxoLeaf.outputIndex > 0 && utxoLeaf.datum) {
+                const datumLeaf = Data.from<DatumLeaf>(utxoLeaf.datum, DatumLeaf);
+                if(datumLeaf.hash == contract.hash) {
+                  contract.database.push({
+                    utxo: utxoLeaf,
+                    datum: datumLeaf
+                  })
+                }
+              }
+            }
+
+            databaseSort(contract.database);
+            contractList.push(contract);
+          }
+        }
+      }
+      return contractList;
     },
   },
   actions: {
@@ -145,7 +185,21 @@ export const stakingStore = defineStore("staking", {
     /**
      * Load all open UTxO from Blockfrost
      */
-    async loadContracts() {
+    async loadUTxOs() {
+      const lucid = await Lucid.new(
+        new Blockfrost(
+          this.blockfrostApi,
+          this.blockfrostToken,
+        ),
+        this.blockfrostNetwork,
+      );
+      console.log(this.debug);
+      const validator = await readValidator(this.debug);
+      const contractAddress = lucid.utils.validatorToAddress(validator);
+      this.utxos = await lucid.utxosAt(contractAddress);
+      console.log(contractAddress);
+
+      this.saveLocalStorage()
     },
 
     /**
@@ -154,7 +208,7 @@ export const stakingStore = defineStore("staking", {
     async load() {
       console.log("Loading store from blockfrost");
       await this.loadWallets();
-      await this.loadContracts();
+      await this.loadUTxOs();
 
       this.saveLocalStorage();
     },
@@ -168,6 +222,7 @@ export const stakingStore = defineStore("staking", {
         "store",
         JSON.stringify(
           {
+            debug: this.debug,
             blockfrostApi: this.blockfrostApi,
             blockfrostNetwork: this.blockfrostNetwork,
             blockfrostToken: this.blockfrostToken,
@@ -220,7 +275,7 @@ export const stakingStore = defineStore("staking", {
      * Generate new private key
      */
     async genKey() {
-      const lucid = await Lucid.new(undefined, "Preview");
+      const lucid = await Lucid.new(undefined, this.blockfrostNetwork);
 
       const key = lucid.utils.generatePrivateKey();
       console.log(`Generating private key: ${key}`);

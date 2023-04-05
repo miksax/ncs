@@ -1,0 +1,41 @@
+@startuml Inputs
+!theme toy
+
+object "Main UTxO" as Main {
+    policy_id: PolicyId
+    owner: Hash<Blake2b_224, VerificationKey>
+    validate: Validate
+    reward: Reward
+    expiration: POSIXTime
+    lovelace: Int
+    count: Int
+    first: Leaf UTxO 1
+}
+
+object "Leaf UTxO 1" as First  {
+    name: AssetName
+    hash: Hash<Blake2b_256, ByteArray>
+    owner: Hash<Blake2b_224, VerificationKey>
+    beneficient: Hash<Blake2b_224, VerificationKey>
+    start: POSIXTime
+    expiration: POSIXTime
+    time: Int
+    amount: Int
+    next: Leaf UTxO 2
+}
+
+object "Leaf UTxO 2" as Second  {
+    name: AssetName
+    hash: Hash<Blake2b_256, ByteArray>
+    owner: Hash<Blake2b_224, VerificationKey>
+    beneficient: Hash<Blake2b_224, VerificationKey>
+    start: POSIXTime
+    expiration: POSIXTime
+    time: Int
+    amount: Int
+    next: None
+}
+
+Main::first --> First::name
+First::next -> Second::name
+@enduml

@@ -82,12 +82,12 @@ export default {
 
             await this.stakingStore.load()
 
-            if(this.stakingStore.blockfrost) {
-                this.$router.push("beneficient")
+            if(this.stakingStore.isBlockfrostSetup) {
+                this.$router.push("contracts")
             }
         },
         test() {
-            this.$router.push("beneficient")
+            this.$router.push("contracts")
         }
     }
 }

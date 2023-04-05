@@ -64,7 +64,7 @@ validator(debug: Bool) {
           [
             common.is_valid(
               context.transaction.validity_range,
-              input_datum.timeout,
+              input_datum.expiration,
             ),
             main.check_datum_no_update(input_datum, output_datum),
             main.check_asset_add(input, input_datum, output, output_datum),
@@ -106,7 +106,7 @@ validator(debug: Bool) {
             input_leaf_datum.beneficient == output_leaf_datum.beneficient,
             common.is_valid(
               context.transaction.validity_range,
-              input_datum.timeout,
+              input_datum.expiration,
             ),
             common.is_valid(
               context.transaction.validity_range,
@@ -144,7 +144,7 @@ validator(debug: Bool) {
             ),
             common.is_valid(
               context.transaction.validity_range,
-              input_datum.timeout,
+              input_datum.expiration,
             ),
             common.is_valid(
               context.transaction.validity_range,
@@ -193,7 +193,7 @@ validator(debug: Bool) {
           common.reward_of(input_datum)
         list.and(
           [
-            input_datum.timeout < output_datum.timeout,
+            input_datum.expiration < output_datum.expiration,
             input_datum.validate == output_datum.validate,
             input_datum.policy_id == output_datum.policy_id,
             input_datum.reward.policy_id == output_datum.reward.policy_id,
@@ -210,7 +210,7 @@ validator(debug: Bool) {
             ),
             common.is_valid(
               context.transaction.validity_range,
-              input_datum.timeout,
+              input_datum.expiration,
             ),
             common.must_be_signed_by(context.transaction, input_datum.owner),
           ],
@@ -222,7 +222,7 @@ validator(debug: Bool) {
           [
             common.is_expired(
               context.transaction.validity_range,
-              input_datum.timeout,
+              input_datum.expiration,
             ),
             common.must_be_signed_by(context.transaction, input_datum.owner),
             when context.purpose is {

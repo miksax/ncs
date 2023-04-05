@@ -11,8 +11,10 @@ node_modules
 .DS_Store
 dist
 dist-ssr
+data
 coverage
 *.local
+build
 
 /cypress/videos/
 /cypress/screenshots/
@@ -26,3 +28,4 @@ coverage
 *.njsproj
 *.sln
 *.sw?
+

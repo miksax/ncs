@@ -23,7 +23,7 @@ pub type Reward {
   name: AssetName,
   amount: Int,
   time: Int,
-  expiration: Int,
+  timeout: Int,
 }
 
 pub type Validate {
@@ -62,7 +62,7 @@ pub type DatumMain {
   // Policy ID of staking contract
   policy_id: PolicyId,
   // Timeout of the contract
-  timeout: POSIXTime,
+  expiration: POSIXTime,
   // Reward parametres
   reward: Reward,
   // Lovelace to interact with contract
@@ -135,10 +135,14 @@ pub fn get_datum_main(
 }
 
 pub fn hash_datum_main(datum: DatumMain) -> Hash<Blake2b_256, ByteArray> {
+  // Hash all relevant unchangable fields
   hash.blake2b_256(
-    datum.validate.policy_id
+    datum.owner
+      |> bytearray.concat(datum.validate.policy_id)
       |> bytearray.concat(datum.validate.name)
-      |> bytearray.concat(datum.policy_id),
+      |> bytearray.concat(datum.policy_id)
+      |> bytearray.concat(datum.reward.policy_id)
+      |> bytearray.concat(datum.reward.name)
   )
 }
 
@@ -148,7 +152,7 @@ pub fn check_main_leaf(main: DatumMain, leaf: DatumLeaf) {
       hash_datum_main(main) == leaf.hash,
       main.reward.time == leaf.time,
       main.reward.amount == leaf.amount,
-      main.timeout >= leaf.expiration,
+      main.expiration >= leaf.expiration,
     ],
   )
 }
@@ -186,9 +190,11 @@ pub fn calculate_running_reward(
   time: POSIXTime,
 ) -> Int {
   let prev =
-    input.reward.expiration * input.reward.amount * input.count / input.reward.time
+    input.reward.timeout * input.reward.amount * input.count / input.reward.time
   let current =
-    ( output.timeout - time ) * output.reward.amount * ( input.count + count ) / output.reward.time
+    ( output.expiration - time ) * output.reward.amount * (
+      input.count + count
+    ) / output.reward.time
 
   prev + current
 }
@@ -340,13 +346,13 @@ test test_datum_main() {
         name: #"5374616b652056616c696461746f72",
       },
       policy_id: #"883698f6cabe9347f8db1b9ae8dab99cafc4285e9e1107fe14feb181",
-      timeout: 1680364053,
+      expiration: 1680364053,
       reward: Reward {
         policy_id: #"883698f6cabe9347f8db1b9ae8dab99cafc4285e9e1107fe14feb181",
         name: #"4d696b736120526577617264",
         amount: 1,
         time: 900,
-        expiration: 3600,
+        timeout: 3600,
       },
       lovelace: 3000000,
       count: 2,
@@ -374,15 +380,4 @@ test test_datum_leaf() {
       next: None,
     }
   cbor.diagnostic(datum) == @"121([h'4170706C65', h'ABCDEF', h'E5A45F228800CC83854EABA1D2745F8F0C240665E2A9D467E1225648', h'DFEA8D1793DC6070FF7210BA57981A806D7FE53850F4FAFC996B3A7D', 1679764968, 1679768508, 900, 900, 122([])])"
-}
-
-test list_desctructuring() {
-  let a =
-    [1]
-  when a is {
-    [c, ..xs] ->
-      True
-    _ ->
-      False
-  }
 }

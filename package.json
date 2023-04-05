@@ -5,7 +5,8 @@
   "private": true,
   "scripts": {
     "dev": "vite",
-    "build": "run-p aiken type-check build-only",
+    "build": "run-p type-check build-only",
+    "buildAll": "build aiken",
     "aiken": "aiken build && mv plutus.json ./src/plutus.json",
     "preview": "vite preview",
     "build-only": "vite build",

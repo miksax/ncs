@@ -9,6 +9,11 @@ const router = createRouter({
       component: () => import("../views/BlockfrostView.vue"),
     },
     {
+      path: "/setting",
+      name: "setting",
+      component: () => import("../views/SettingView.vue"),
+    },
+    {
       path: "/wallets",
       name: "wallets",
       component: () => import("../views/WalletsView.vue"),
@@ -20,12 +25,20 @@ const router = createRouter({
       props: true,
     },
     {
-      path: "/beneficient",
-      name: "beneficient",
-      // route level code-splitting
-      // this generates a separate chunk (About.[hash].js) for this route
-      // which is lazy-loaded when the route is visited.
-      component: () => import("../views/BeneficientView.vue"),
+      path: "/create",
+      name: "create",
+      component: () => import("../views/ContractCreateView.vue"),
+    },
+    {
+      path: "/contracts",
+      name: "contractList",
+      component: () => import("../views/ContractListView.vue"),
+    },
+    {
+      path: "/contract/:txHash",
+      name: "contractListSelected",
+      component: () => import("../views/ContractListView.vue"),
+      props: true,
     },
   ],
 });
