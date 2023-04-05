@@ -8,6 +8,7 @@ export default {
   data: () => ({
     collapsed: true
   }),
+  components: { RouterLink, RouterView, BlockfrostView },
   computed: {
     ...mapStores(stakingStore),
   },
