@@ -107,7 +107,7 @@ pub fn check_pred_datum(
       input_datum.name == output_datum.name,
       input_datum.hash == output_datum.hash,
       input_datum.owner == output_datum.owner,
-      input_datum.beneficient == output_datum.beneficient,
+      input_datum.staker == output_datum.staker,
       input_datum.start == output_datum.start,
       input_datum.expiration == output_datum.expiration,
       input_datum.time == output_datum.time,
@@ -148,7 +148,7 @@ pub fn check_asset_add_first(
   list.and(
     [
       check_asset_value(main_input_datum, output),
-      common.must_be_signed_by(context.transaction, output_datum.beneficient),
+      common.must_be_signed_by(context.transaction, output_datum.staker),
       when main_input_datum.first is {
         // Some previose record
         Some(first) ->
@@ -193,7 +193,7 @@ pub fn check_asset_add_regular(
       outputs.current_datum.next == input_datum.next,
       common.must_be_signed_by(
         context.transaction,
-        outputs.current_datum.beneficient,
+        outputs.current_datum.staker,
       ),
       common.asset_present(
         context,

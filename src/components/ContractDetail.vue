@@ -78,7 +78,11 @@ export default {
             return new Date(Number(this.contract?.datum.expiration));
         },
         first() {
-            return toText(this.contract.datum.first)
+            if(this.contract.datum.first) {
+                return toText(this.contract.datum.first)
+            } else {
+                return "N/A"
+            }
         }
     },
     methods: {
@@ -91,7 +95,7 @@ export default {
         async close(contract: Contract) {
             console.log("closing");
             const lucid = await this.stakingStore.getWallet('owner');
-            const signedTx = await contractClose(lucid, contract, this.stakingStore.debug);
+            const signedTx = await contractClose(lucid, contract, this.stakingStore.debug, false);
             const txHash = await signedTx.submit();
             console.log(`Submitted transaction: ${txHash}`);
             await lucid.awaitTx(txHash);

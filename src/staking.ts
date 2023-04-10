@@ -134,7 +134,7 @@ export const DatumLeaf = Data.Object({
   name: Data.Bytes(),
   hash: Data.Bytes(),
   owner: Data.Bytes(),
-  beneficient: Data.Bytes(),
+  staker: Data.Bytes(),
   start: Data.Integer(),
   expiration: Data.Integer(),
   time: Data.Integer(),
@@ -249,8 +249,16 @@ export function hash(data: string): string {
 }
 
 export function hashDatumMain(datum: DatumMain): string {
-  const data = datum.validate.policyId + datum.validate.name + datum.policyId;
-  return hash(data);
+  //const data = datum.validate.policyId + datum.validate.name + datum.policyId;
+  const data = [
+    datum.owner,
+    datum.validate.policyId,
+    datum.validate.name,
+    datum.policyId,
+    datum.reward.policyId,
+    datum.reward.name
+  ];
+  return hash(data.join(''));
 }
 
 export function databaseSort(database: Leaf[]) {
@@ -265,6 +273,14 @@ export function databaseSort(database: Leaf[]) {
 
     return 0;
   });
+}
+
+function getRedeemer(redemer: string, debug: boolean, force: boolean) {
+  if(debug && force) {
+    return Data.to(new Constr(6, []));
+  } else {
+    return redemer;
+  }
 }
 
 export function databaseGet(database: Leaf[], name: string): Leaf {
@@ -438,7 +454,6 @@ export async function contractCreate(
 
 export async function contractRenew(
   contract: Contract,
-  database: Leaf[],
   owner: Lucid,
   expiration: bigint,
   lovelace: bigint,
@@ -447,9 +462,9 @@ export async function contractRenew(
   amount: bigint,
   max: bigint,
   debug: boolean,
+  force: boolean,
 ): Promise<TxSigned> {
-  //const redeemer = Data.to(new Constr(6, []));
-  const redeemer = Data.to(new Constr(4, [now]));
+  const redeemer = getRedeemer(Data.to(new Constr(4, [now])), debug, force);
   const validator = await readValidator(debug);
   const contractAddress = owner.utils.validatorToAddress(validator);
   const query = [{
@@ -500,6 +515,7 @@ export async function contractRenew(
     .newTx()
     .collectFrom([utxo], redeemer);
 
+  /*
   if (validationMint !== BigInt(0)) {
     txBuilder = txBuilder
       .mintAssets({
@@ -507,6 +523,7 @@ export async function contractRenew(
       }, Data.to(new Constr(0, [])))
       .attachMintingPolicy(await createValidatePolicy(owner, debug));
   }
+  */
   const tx = await txBuilder
     .payToContract(contractAddress, {
       inline: Data.to<DatumMain>(contract.datum, DatumMain),
@@ -526,10 +543,10 @@ export async function contractRenew(
 export async function contractClose(
   owner: Lucid,
   contract: Contract,
-  debug: boolean
+  debug: boolean,
+  force: boolean,
 ): Promise<TxSigned> {
-  const redeemer = Data.to(new Constr(6, []));
-  //const redeemer = Data.to(new Constr(5, []));
+  const redeemer = getRedeemer(Data.to(new Constr(5, [])), debug, force);
   const validator = await readValidator(debug);
   /*
   const collect: Array<OutRef> = [{
@@ -581,14 +598,14 @@ export async function contractClose(
  */
 export async function contractAssetAdd(
   contract: Contract,
-  beneficient: Lucid,
+  lucid: Lucid,
   name: string,
   debug: boolean,
+  force: boolean,
 ): Promise<TxSigned> {
-  //const redeemer = Data.to(new Constr(0, []));
-  const redeemer = Data.to(new Constr(6, []));
+  const redeemer = getRedeemer(Data.to(new Constr(0, [])), debug, force);
   const validator = await readValidator(debug);
-  const contractAddress = beneficient.utils.validatorToAddress(validator);
+  const contractAddress = lucid.utils.validatorToAddress(validator);
 
   const prev = databaseGetPrev(contract.database, name);
   let next = null;
@@ -601,7 +618,7 @@ export async function contractAssetAdd(
     contract.datum.first = name;
   }
   contract.datum.count += BigInt(1);
-  const [utxo] = await beneficient.utxosByOutRef([{
+  const [utxo] = await lucid.utxosByOutRef([{
     txHash: contract.utxo.txHash,
     outputIndex: Number(contract.utxo.outputIndex),
   }]);
@@ -612,7 +629,7 @@ export async function contractAssetAdd(
     name,
     hash: hashDatumMain(contract.datum),
     owner: contract.datum.owner,
-    beneficient: await getWalletHash(beneficient),
+    staker: await getWalletHash(lucid),
     start: calculateStart(),
     expiration: calculateExpiration(contract.datum),
     amount: contract.datum.reward.amount,
@@ -629,7 +646,7 @@ export async function contractAssetAdd(
   console.log(contract.datum);
   console.log(nftDatumData);
 
-  let txBuilder = beneficient
+  let txBuilder = lucid
     .newTx()
     .collectFrom(utxos, redeemer)
     // Attach main contract
@@ -650,7 +667,7 @@ export async function contractAssetAdd(
 
   // If there is exist record, create new one
   if (prev !== null) {
-    const [utxo] = await beneficient.utxosByOutRef([{
+    const [utxo] = await lucid.utxosByOutRef([{
       txHash: prev.utxo.txHash,
       outputIndex: Number(prev.utxo.outputIndex),
     }]);
@@ -663,10 +680,10 @@ export async function contractAssetAdd(
   }
 
   const tx = await txBuilder
-    .payToAddress(await beneficient.wallet.address(), {
+    .payToAddress(await lucid.wallet.address(), {
       [nftUnit]: BigInt(1),
     })
-    .addSigner(await beneficient.wallet.address())
+    .addSigner(await lucid.wallet.address())
     .validFrom(validFrom())
     .attachSpendingValidator(validator)
     .complete();
@@ -679,20 +696,19 @@ export async function contractAssetAdd(
 
 export async function contractAssetPayout(
   contract: Contract,
-  database: Leaf[],
-  beneficient: Lucid,
-  name: string,
-  debug: boolean
+  leaf: Leaf,
+  lucid: Lucid,
+  debug: boolean,
+  force: boolean,
 ): Promise<TxSigned> {
   // Redemer for payout must have current timestamp
-  //const redeemer = Data.to(new Constr(1, [now]));
-  const redeemer = Data.to(new Constr(6, []));
+  const redeemer = getRedeemer(Data.to(new Constr(1, [now])), debug, force);
   const validator = await readValidator(debug);
-  const contractAddress = beneficient.utils.validatorToAddress(validator);
+  const contractAddress = lucid.utils.validatorToAddress(validator);
 
-  const prev = databaseGetPrev(database, name);
-  const current = databaseGet(database, name);
+  const prev = databaseGetPrev(contract.database, leaf.datum.name);
 
+  /*
   const query = [
     {
       txHash: contract.utxo.txHash,
@@ -703,19 +719,23 @@ export async function contractAssetPayout(
       outputIndex: Number(current.utxo.outputIndex),
     },
   ];
+  */
+
+  const utxos = [contract.utxo, leaf.utxo];
 
   if (prev !== null) {
-    prev.datum.next = current.datum.next;
-    query.push({
+    prev.datum.next = leaf.datum.next;
+    /*query.push({
       txHash: prev.utxo.txHash,
       outputIndex: Number(prev.utxo.outputIndex),
-    });
+    });*/
+    utxos.push(prev.utxo);
   } else {
-    contract.datum.first = current.datum.next;
+    contract.datum.first = leaf.datum.next;
   }
 
   contract.datum.count -= BigInt(1);
-  const utxo_query = await beneficient.utxosByOutRef(query);
+  /*const utxo_query = await lucid.utxosByOutRef(query);
   const utxo = utxo_query.find((u) =>
     u.txHash === contract.utxo.txHash &&
     u.outputIndex === Number(contract.utxo.outputIndex)
@@ -725,38 +745,41 @@ export async function contractAssetPayout(
     u.outputIndex === Number(current.utxo.outputIndex)
   )!;
 
-  let leaf_pred = null;
+  */
+  //let leaf_pred = null;
 
-  const utxos = [utxo, leaf];
+
+  //const utxos = [utxo, leaf];
   if (prev !== null) {
-    leaf_pred = utxo_query.find((u) =>
+    /*leaf_pred = utxo_query.find((u) =>
       u.txHash === prev.utxo.txHash &&
       u.outputIndex === Number(prev.utxo.outputIndex)
     )!;
     utxos.push(
       leaf_pred,
-    );
+    );*/
+    utxos.push(prev.utxo);
   }
 
   const rewardUnit: Unit = contract.datum.reward.policyId +
     contract.datum.reward.name;
   const validateUnit: Unit = contract.datum.validate.policyId +
     contract.datum.validate.name;
-  const nftUnit: Unit = contract.datum.policyId + current.datum.name;
+  const nftUnit: Unit = contract.datum.policyId + leaf.datum.name;
 
-  const reward = calculateReward(contract.datum, current.datum);
+  const reward = calculateReward(contract.datum, leaf.datum);
 
   const assets = {
     lovelace: contract.datum.lovelace,
-    [rewardUnit]: utxo.assets[rewardUnit] - reward,
+    [rewardUnit]: BigInt(contract.utxo.assets[rewardUnit]) - reward,
     [validateUnit]:
-      (validateUnit in utxo.assets ? utxo.assets[validateUnit] : BigInt(0)) +
+      (validateUnit in contract.utxo.assets ? BigInt(contract.utxo.assets[validateUnit]) : BigInt(0)) +
       BigInt(1),
   };
 
   console.log(assets);
 
-  let txBuilder = beneficient
+  let txBuilder = lucid
     .newTx()
     .collectFrom(utxos, redeemer)
     .payToContract(contractAddress, {
@@ -765,23 +788,22 @@ export async function contractAssetPayout(
 
   if (prev !== null) {
     txBuilder = txBuilder
-      .collectFrom([leaf_pred!], redeemer)
       .payToContract(contractAddress, {
         inline: Data.to<DatumLeaf>(prev.datum, DatumLeaf),
-      }, leaf_pred!.assets);
+      }, prev.utxo.assets);
   }
 
   console.log(
     `Alive1: ${now} ${
-      now < current.datum.expiration
-    } ${current.datum.expiration}`,
+      now < leaf.datum.expiration
+    } ${leaf.datum.expiration}`,
   );
 
   txBuilder = txBuilder
-    .payToAddress(await beneficient.wallet.address(), {
+    .payToAddress(await lucid.wallet.address(), {
       [nftUnit]: BigInt(1),
     })
-    .addSigner(await beneficient.wallet.address())
+    .addSigner(await lucid.wallet.address())
     .validFrom(validFrom())
     .attachSpendingValidator(validator);
 
@@ -791,35 +813,23 @@ export async function contractAssetPayout(
   const signedTx = await tx
     .sign()
     .complete();
-
-  console.log("Alive3");
-  const txHash = await signedTx.submit();
-  contract.utxo.txHash = txHash;
-  if (prev !== null) {
-    prev.utxo.txHash = txHash;
-    prev.utxo.outputIndex = 1;
-  }
-  database.splice(
-    database.findIndex((leaf) => leaf.datum.name === name),
-    1,
-  );
-  console.log(txHash);
   return signedTx;
 }
 
 export async function contractAssetRenew(
   contract: Contract,
-  beneficient: Lucid,
-  name: string,
-  debug: boolean
+  leaf: Leaf,
+  lucid: Lucid,
+  debug: boolean,
+  force: boolean
 ): Promise<TxSigned> {
-  const redeemer = Data.to(new Constr(2, []));
-  //const redeemer = Data.to(new Constr(6, []));
+  const redeemer = getRedeemer(Data.to(new Constr(2, [])), debug, force);
   const validator = await readValidator(debug);
-  const contractAddress = beneficient.utils.validatorToAddress(validator);
+  const contractAddress = lucid.utils.validatorToAddress(validator);
 
-  const current = databaseGet(contract.database, name);
+  //const current = databaseGet(contract.database, name);
 
+  /*
   const utxos = await beneficient.utxosByOutRef([
     {
       txHash: contract.utxo.txHash,
@@ -835,20 +845,23 @@ export async function contractAssetRenew(
     u.txHash === contract.utxo.txHash &&
     u.outputIndex === Number(contract.utxo.outputIndex)
   )!;
+  */
+
+  const utxos = [contract.utxo, leaf.utxo];
 
   const rewardUnit: Unit = contract.datum.reward.policyId +
     contract.datum.reward.name;
   const validateUnit: Unit = contract.datum.validate.policyId +
     contract.datum.validate.name;
-  const nftUnit: Unit = contract.datum.policyId + current.datum.name;
+  const nftUnit: Unit = contract.datum.policyId + leaf.datum.name;
 
-  const reward = calculateReward(contract.datum, current.datum);
-  current.datum.start = calculateStart();
-  current.datum.expiration = calculateExpiration(contract.datum);
-  current.datum.time = contract.datum.reward.time;
-  current.datum.amount = contract.datum.reward.amount;
+  const reward = calculateReward(contract.datum, leaf.datum);
+  leaf.datum.start = calculateStart();
+  leaf.datum.expiration = calculateExpiration(contract.datum);
+  leaf.datum.time = contract.datum.reward.time;
+  leaf.datum.amount = contract.datum.reward.amount;
 
-  const tx = await beneficient
+  const tx = await lucid
     .newTx()
     .collectFrom(utxos, redeemer)
     // Attach main contract
@@ -856,20 +869,20 @@ export async function contractAssetRenew(
       inline: Data.to<DatumMain>(contract.datum, DatumMain),
     }, {
       lovelace: contract.datum.lovelace,
-      [rewardUnit]: utxo.assets[rewardUnit] - reward,
+      [rewardUnit]: BigInt(contract.utxo.assets[rewardUnit]) - reward,
       [validateUnit]:
-        (validateUnit in utxo.assets ? utxo.assets[validateUnit] : BigInt(0)),
+        (validateUnit in contract.utxo.assets ? contract.utxo.assets[validateUnit] : BigInt(0)),
     })
     .payToContract(contractAddress, {
-      inline: Data.to<DatumLeaf>(current.datum, DatumLeaf),
+      inline: Data.to<DatumLeaf>(leaf.datum, DatumLeaf),
     }, {
       lovelace: contract.datum.lovelace,
       [validateUnit]: BigInt(1),
     })
-    .payToAddress(await beneficient.wallet.address(), {
+    .payToAddress(await lucid.wallet.address(), {
       [nftUnit]: BigInt(1),
     })
-    .addSigner(await beneficient.wallet.address())
+    .addSigner(await lucid.wallet.address())
     .validFrom(validFrom())
     .attachSpendingValidator(validator)
     .complete();
@@ -878,11 +891,6 @@ export async function contractAssetRenew(
     .sign()
     .complete();
 
-  const txHash = await signedTx.submit();
-
-  contract.utxo.txHash = txHash;
-  current.utxo.txHash = txHash;
-  current.utxo.outputIndex = 1;
   return signedTx;
 }
 
@@ -893,10 +901,10 @@ export async function contractAssetClose(
   contract: Contract,
   owner: Lucid,
   name: string,
-  debug: boolean
+  debug: boolean,
+  force: boolean,
 ): Promise<TxSigned> {
-  const redeemer = Data.to(new Constr(3, []));
-  //const redeemer = Data.to(new Constr(6, []));
+  const redeemer = getRedeemer(Data.to(new Constr(3, [])), debug, force);
   const validator = await readValidator(debug);
   const contractAddress = owner.utils.validatorToAddress(validator);
 

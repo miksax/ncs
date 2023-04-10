@@ -41,7 +41,7 @@ pub type DatumLeaf {
   // Owner of the main UTxO
   owner: Hash<Blake2b_224, VerificationKey>,
   // Beneficient
-  beneficient: Hash<Blake2b_224, VerificationKey>,
+  staker: Hash<Blake2b_224, VerificationKey>,
   // Start of staking
   start: POSIXTime,
   // Expiration of staking
@@ -372,7 +372,7 @@ test test_datum_leaf() {
       name: #"4170706c65",
       hash: #"abcdef",
       owner: #"e5a45f228800cc83854eaba1d2745f8f0c240665e2a9d467e1225648",
-      beneficient: #"dfea8d1793dc6070ff7210ba57981a806d7fe53850f4fafc996b3a7d",
+      staker: #"dfea8d1793dc6070ff7210ba57981a806d7fe53850f4fafc996b3a7d",
       start: 1679764968,
       expiration: 1679768508,
       time: 900,

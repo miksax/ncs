@@ -39,18 +39,18 @@
 import { mapStores } from 'pinia'
 import { stakingStore } from '../stores/staking'
 import CardanoScan from '../components/CardanoScan.vue'
-import type { Contract } from '../staking'
+import { contractRenew, type Contract } from '../staking'
 import {
     toText,
 } from "lucid-cardano";
 
 type RenewData = {
-        rewardAmount: Number
-        rewardTime: Number
-        rewardTimeout: Number
-        expiration: Number
-        lovelace: Number
-    };
+    rewardAmount: Number
+    rewardTime: Number
+    rewardTimeout: Number
+    expiration: Number
+    lovelace: Number
+};
 
 export default {
     props: {
@@ -73,6 +73,7 @@ export default {
         }
     },
     computed: {
+        ...mapStores(stakingStore),
         expiration() {
             return new Date(Number(this.renewData.expiration));
         }
@@ -82,7 +83,24 @@ export default {
             return date.toLocaleString()
         },
         async renew(contract: Contract, renewData: RenewData) {
-            console.log("renew");
+            const lucid = await this.stakingStore.getWallet("owner");
+            const signedTx = await contractRenew(
+                contract,
+                lucid,
+                BigInt(Number(renewData.expiration)),
+                BigInt(Number(renewData.lovelace)),
+                BigInt(Number(renewData.rewardTimeout)),
+                BigInt(Number(renewData.rewardTime)),
+                BigInt(Number(renewData.rewardAmount)),
+                BigInt(5),
+                this.stakingStore.debug,
+                true
+            );
+
+            const txHash = await signedTx.submit();
+            console.log(`Submitted transaction: ${txHash}`);
+            await lucid.awaitTx(txHash);
+            console.log(`Confirmed`);
         }
     }
 }

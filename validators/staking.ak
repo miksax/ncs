@@ -101,9 +101,9 @@ validator(debug: Bool) {
             ),
             common.must_be_signed_by(
               context.transaction,
-              input_leaf_datum.beneficient,
+              input_leaf_datum.staker,
             ),
-            input_leaf_datum.beneficient == output_leaf_datum.beneficient,
+            input_leaf_datum.staker == output_leaf_datum.staker,
             common.is_valid(
               context.transaction.validity_range,
               input_datum.expiration,
@@ -140,7 +140,7 @@ validator(debug: Bool) {
             ),
             common.must_be_signed_by(
               context.transaction,
-              input_leaf_datum.beneficient,
+              input_leaf_datum.staker,
             ),
             common.is_valid(
               context.transaction.validity_range,

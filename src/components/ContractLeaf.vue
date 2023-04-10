@@ -2,8 +2,8 @@
     <div class="block">
         <div style="float: right;">
             <div class="upper">
-                <button class="btn">Renew</button>
-                <button class="btn">Payout</button>
+                <button class="btn" @click="renew(contract, leaf)">Renew</button>
+                <button class="btn" @click="payout(contract, leaf)">Payout</button>
             </div>
         </div>
 
@@ -39,13 +39,26 @@
 
 <script lang="ts">
 import {
-  fromText,
   toText
 } from "lucid-cardano";
+import { contractAssetRenew, contractAssetPayout, type Contract, type Leaf } from '../staking'
+import { mapStores } from 'pinia'
+import { stakingStore } from '../stores/staking'
+
 export default {
     data: () => ({}),
-    props: ["contract", "leaf"],
+    props: {
+        contract: {
+            type: Object,
+            required: true
+        },
+        leaf: {
+            type: Object,
+            required: true
+        },
+    },
     computed: {
+        ...mapStores(stakingStore),
         name() {
             return toText(this.leaf.datum.name)
         },
@@ -54,6 +67,26 @@ export default {
         },
         expiration() {
             return new Date(Number(this.leaf.datum.expiration)).toLocaleString();
+        }
+    },
+    methods: {
+        async renew(contract: Contract, leaf: Leaf) {
+            const lucid = await this.stakingStore.getWallet("staker");
+            const signedTx = await contractAssetRenew(contract, leaf, lucid,  this.stakingStore.debug, false);
+
+            const txHash = await signedTx.submit();
+            console.log(`Submitted transaction: ${txHash}`);
+            await lucid.awaitTx(txHash);
+            console.log(`Confirmed`);
+        },
+        async payout(contract: Contract, leaf: Leaf) {
+            const lucid = await this.stakingStore.getWallet("staker");
+            const signedTx = await contractAssetPayout(contract, leaf, lucid,  this.stakingStore.debug, true);
+
+            const txHash = await signedTx.submit();
+            console.log(`Submitted transaction: ${txHash}`);
+            await lucid.awaitTx(txHash);
+            console.log(`Confirmed`);
         }
     }
 }
