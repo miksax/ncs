@@ -276,7 +276,7 @@ export function databaseSort(database: Leaf[]) {
 }
 
 function getRedeemer(redemer: string, debug: boolean, force: boolean) {
-  if(debug && force) {
+  if (debug && force) {
     return Data.to(new Constr(6, []));
   } else {
     return redemer;
@@ -524,6 +524,7 @@ export async function contractRenew(
       .attachMintingPolicy(await createValidatePolicy(owner, debug));
   }
   */
+  console.log(assets);
   const tx = await txBuilder
     .payToContract(contractAddress, {
       inline: Data.to<DatumMain>(contract.datum, DatumMain),
@@ -533,11 +534,7 @@ export async function contractRenew(
     .attachSpendingValidator(validator)
     .complete();
 
-  const signedTx = await tx.sign().complete();
-  const txHash = await signedTx.submit();
-  contract.utxo.txHash = txHash;
-
-  return signedTx;
+  return await tx.sign().complete();
 }
 
 export async function contractClose(
@@ -563,12 +560,12 @@ export async function contractClose(
   const utxos = await owner.utxosByOutRef(collect);
   */
   const validateUnit: Unit = contract.datum.validate.policyId + contract.datum.validate.name;
-  const validateAmount = contract.datum.count + BigInt(validateUnit in contract.utxo.assets?contract.utxo.assets[validateUnit]:BigInt(0));
+  const validateAmount = contract.datum.count + BigInt(validateUnit in contract.utxo.assets ? contract.utxo.assets[validateUnit] : BigInt(0));
   const validatePolicy = await createValidatePolicy(owner, debug);
   //const validatePolicyId = owner.utils.mintingPolicyToId(validatePolicy);
 
   const utxos = [contract.utxo];
-  for(const leaf of contract.database) {
+  for (const leaf of contract.database) {
     utxos.push(leaf.utxo);
   }
 
@@ -578,17 +575,16 @@ export async function contractClose(
   const tx = await owner
     .newTx()
     .collectFrom(utxos, redeemer)
-    .mintAssets({[validateUnit]: -validateAmount}, redeemer)
+    .mintAssets({ [validateUnit]: -validateAmount }, redeemer)
     .addSigner(await owner.wallet.address())
     .validFrom(validFrom())
     .attachSpendingValidator(validator)
     .attachMintingPolicy(validatePolicy)
     .complete();
 
-  const signedTx = await tx
+  return await tx
     .sign()
     .complete();
-  return signedTx;
 }
 
 /**
@@ -794,8 +790,7 @@ export async function contractAssetPayout(
   }
 
   console.log(
-    `Alive1: ${now} ${
-      now < leaf.datum.expiration
+    `Alive1: ${now} ${now < leaf.datum.expiration
     } ${leaf.datum.expiration}`,
   );
 
@@ -810,10 +805,9 @@ export async function contractAssetPayout(
   console.log(`Alive2: ${nftUnit}`);
   const tx = await txBuilder.complete();
 
-  const signedTx = await tx
+  return await tx
     .sign()
     .complete();
-  return signedTx;
 }
 
 export async function contractAssetRenew(
@@ -887,11 +881,9 @@ export async function contractAssetRenew(
     .attachSpendingValidator(validator)
     .complete();
 
-  const signedTx = await tx
+  return await tx
     .sign()
     .complete();
-
-  return signedTx;
 }
 
 /**
@@ -968,8 +960,7 @@ export async function contractAssetClose(
     .attachSpendingValidator(validator)
     .complete();
 
-  const signedTx = await tx
+  return await tx
     .sign()
     .complete();
-  return signedTx;
 }

@@ -248,7 +248,7 @@ pub fn check_validate_asset(
   let others =
     context.transaction.outputs
     |> list.filter(fn(o) { o.address != address })
-    |> list.all(fn(o) { value.tokens(o.value, policy_id) == dict.new() })
+    |> list.all(fn(o) { quantity_of(o.value, policy_id, name) == 0 })
 
   let scripts = when outputs is {
     [main, ..leves] -> {
