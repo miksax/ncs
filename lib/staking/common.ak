@@ -270,6 +270,7 @@ pub fn check_validate_asset(
       let datum_main = get_datum_main(main, context)
       datum_main.validate.policy_id == policy_id && datum_main.validate.name == name
     }
+    [] -> True
     _ -> error @"Unexpected records"
   }
 
