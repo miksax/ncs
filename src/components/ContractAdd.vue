@@ -15,7 +15,7 @@
 
 <script lang="ts">
 import {
-  fromUnit, toText, fromText, type Unit
+    fromUnit, toText, fromText, type Unit
 } from "lucid-cardano";
 import { contractAssetAdd, type Contract } from "../staking"
 import { mapStores } from 'pinia'
@@ -34,22 +34,22 @@ export default {
             required: true
         }
     },
-    data: () => ({name: ""}),
+    data: () => ({ name: "" }),
     computed: {
         ...mapStores(stakingStore),
         assets() {
             const contract = this.contract as Contract;
             let assets: Asset[] = [];
-            for(const unit in this.stakingStore.assets["staker"]) {
+            for (const unit in this.stakingStore.assets["staker"]) {
                 const parse = fromUnit(unit)
-                if(
+                if (
                     parse.policyId == contract.datum.policyId
-                    && contract.database.find((l)=> (l.datum.name == parse.assetName)) === undefined
+                    && contract.database.find((l) => (l.datum.name == parse.assetName)) === undefined
                 ) {
                     assets.push({
                         unit,
                         policyId: parse.policyId,
-                        name: parse.assetName?toText(parse.assetName):""
+                        name: parse.assetName ? toText(parse.assetName) : ""
                     })
                 }
             }
@@ -60,7 +60,7 @@ export default {
         async add(name: string) {
             const contract = this.contract as Contract;
             const lucid = await this.stakingStore.getWallet("staker");
-            const signedTx = await contractAssetAdd(contract, lucid, fromText(name), this.stakingStore.debug, false);
+            const signedTx = await contractAssetAdd(contract, lucid, fromText(name), this.stakingStore.debug, true);
 
             const txHash = await signedTx.submit();
             console.log(`Submitted transaction: ${txHash}`);

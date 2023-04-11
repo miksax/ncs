@@ -275,11 +275,12 @@ export function databaseSort(database: Leaf[]) {
   });
 }
 
-function getRedeemer(redemer: string, debug: boolean, force: boolean) {
+function getRedeemer(redeemer: string, debug: boolean, force: boolean) {
   if (debug && force) {
+    console.log("Force redeemer");
     return Data.to(new Constr(6, []));
   } else {
-    return redemer;
+    return redeemer;
   }
 }
 
@@ -684,10 +685,9 @@ export async function contractAssetAdd(
     .attachSpendingValidator(validator)
     .complete();
 
-  const signedTx = await tx
+  return await tx
     .sign()
     .complete();
-  return signedTx;
 }
 
 export async function contractAssetPayout(

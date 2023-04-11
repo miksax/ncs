@@ -242,7 +242,7 @@ pub fn check_validate_asset(
     list.filter(
       context.transaction.outputs,
       fn(o) {
-        o.address == address && quantity_of(o.value, policy_id, name) > 0
+        o.address == address && quantity_of(o.value, policy_id, name) >= 0
       },
     )
   let others =
@@ -271,7 +271,6 @@ pub fn check_validate_asset(
       datum_main.validate.policy_id == policy_id && datum_main.validate.name == name
     }
     [] -> True
-    _ -> error @"Unexpected records"
   }
 
   others && scripts
