@@ -96,15 +96,12 @@ pub type Redeemer {
 // Get datum from transaction or error
 pub fn get_datum(datum: Datum, context: ScriptContext) -> Data {
   when datum is {
-    NoDatum ->
-      error @"No datum provided!!!"
+    NoDatum -> error @"No datum provided!!!"
     DatumHash(datum_hash) -> {
-      expect Some(data) =
-        find_datum(context.transaction, datum_hash)
+      expect Some(data) = find_datum(context.transaction, datum_hash)
       data
     }
-    InlineDatum(data) ->
-      data
+    InlineDatum(data) -> data
   }
 }
 
@@ -113,10 +110,8 @@ pub fn get_datum_leaf(
   output: transaction.Output,
   context: ScriptContext,
 ) -> DatumLeaf {
-  let datum =
-    get_datum(output.datum, context)
-  expect leaf: DatumLeaf =
-    datum
+  let datum = get_datum(output.datum, context)
+  expect leaf: DatumLeaf = datum
 
   leaf
 }
@@ -126,10 +121,8 @@ pub fn get_datum_main(
   output: transaction.Output,
   context: ScriptContext,
 ) -> DatumMain {
-  let datum =
-    get_datum(output.datum, context)
-  expect main: DatumMain =
-    datum
+  let datum = get_datum(output.datum, context)
+  expect main: DatumMain = datum
 
   main
 }
@@ -138,11 +131,11 @@ pub fn hash_datum_main(datum: DatumMain) -> Hash<Blake2b_256, ByteArray> {
   // Hash all relevant unchangable fields
   hash.blake2b_256(
     datum.owner
-      |> bytearray.concat(datum.validate.policy_id)
-      |> bytearray.concat(datum.validate.name)
-      |> bytearray.concat(datum.policy_id)
-      |> bytearray.concat(datum.reward.policy_id)
-      |> bytearray.concat(datum.reward.name)
+    |> bytearray.concat(datum.validate.policy_id)
+    |> bytearray.concat(datum.validate.name)
+    |> bytearray.concat(datum.policy_id)
+    |> bytearray.concat(datum.reward.policy_id)
+    |> bytearray.concat(datum.reward.name),
   )
 }
 
@@ -159,19 +152,15 @@ pub fn check_main_leaf(main: DatumMain, leaf: DatumLeaf) {
 
 pub fn is_expired(range: ValidityRange, expiration: POSIXTime) {
   when range.lower_bound.bound_type is {
-    Finite(now) ->
-      now >= expiration
-    _ ->
-      False
+    Finite(now) -> now >= expiration
+    _ -> False
   }
 }
 
 pub fn is_valid(range: ValidityRange, expiration: POSIXTime) {
   when range.lower_bound.bound_type is {
-    Finite(now) ->
-      expiration >= now
-    _ ->
-      False
+    Finite(now) -> expiration >= now
+    _ -> False
   }
 }
 
@@ -219,18 +208,15 @@ pub fn reward_of(datum: DatumMain) {
 }
 
 pub fn get_address(context: ScriptContext) -> Address {
-  expect Spend(output_reference) =
-    context.purpose
+  expect Spend(output_reference) = context.purpose
   expect Some(input) =
     transaction.find_input(context.transaction, output_reference)
-  expect ScriptCredential(_) =
-    input.output.address.payment_credential
+  expect ScriptCredential(_) = input.output.address.payment_credential
   input.output.address
 }
 
 pub fn script_input_count(context: ScriptContext) -> Int {
-  let address =
-    get_address(context)
+  let address = get_address(context)
   list.length(
     list.filter(
       context.transaction.inputs,
@@ -240,8 +226,7 @@ pub fn script_input_count(context: ScriptContext) -> Int {
 }
 
 pub fn script_output_count(context: ScriptContext) -> Int {
-  let address =
-    get_address(context)
+  let address = get_address(context)
   list.length(
     list.filter(context.transaction.outputs, fn(o) { o.address == address }),
   )
@@ -262,53 +247,43 @@ pub fn check_validate_asset(
     )
   let others =
     context.transaction.outputs
-      |> list.filter(fn(o) { o.address != address })
-      |> list.all(fn(o) { value.tokens(o.value, policy_id) == dict.new() })
+    |> list.filter(fn(o) { o.address != address })
+    |> list.all(fn(o) { value.tokens(o.value, policy_id) == dict.new() })
 
-  let scripts =
-    when outputs is {
-      [main, ..leves] -> {
-        let datum_main =
-          get_datum_main(main, context)
-        let datum_main_hash =
-          hash_datum_main(datum_main)
-        let datums_leves =
-          list.filter_map(
-            leves,
-            fn(leaf) { Some(get_datum_leaf(leaf, context)) },
-          )
-        list.and(
-          [
-            datum_main.validate.policy_id == policy_id && datum_main.validate.name == name,
-            list.all(
-              datums_leves,
-              fn(datum_leaf) { datum_main_hash == datum_leaf.hash },
-            ),
-          ],
-        )
-      }
-      _ ->
-        error @"Unexpected records"
+  let scripts = when outputs is {
+    [main, ..leves] -> {
+      let datum_main = get_datum_main(main, context)
+      let datum_main_hash = hash_datum_main(datum_main)
+      let datums_leves =
+        list.filter_map(leves, fn(leaf) { Some(get_datum_leaf(leaf, context)) })
+      list.and(
+        [
+          datum_main.validate.policy_id == policy_id && datum_main.validate.name == name,
+          list.all(
+            datums_leves,
+            fn(datum_leaf) { datum_main_hash == datum_leaf.hash },
+          ),
+        ],
+      )
     }
+    [main] -> {
+      let datum_main = get_datum_main(main, context)
+      datum_main.validate.policy_id == policy_id && datum_main.validate.name == name
+    }
+    _ -> error @"Unexpected records"
+  }
 
   others && scripts
 }
 
 test redeemer() {
-  let r1 =
-    AssetAdd
-  let r2 =
-    AssetPayout(123)
-  let r3 =
-    AssetRenew
-  let r4 =
-    AssetClose
-  let r5 =
-    Renew(123)
-  let r6 =
-    Close
-  let r7 =
-    Collect
+  let r1 = AssetAdd
+  let r2 = AssetPayout(123)
+  let r3 = AssetRenew
+  let r4 = AssetClose
+  let r5 = Renew(123)
+  let r6 = Close
+  let r7 = Collect
 
   list.and(
     [
@@ -324,10 +299,8 @@ test redeemer() {
 }
 
 test bool() {
-  let true =
-    True
-  let false =
-    False
+  let true = True
+  let false = False
 
   list.and(
     [cbor.diagnostic(true) == @"122([])", cbor.diagnostic(false) == @"121([])"],
@@ -361,8 +334,8 @@ test test_datum_main() {
   //cbor.diagnostic(datum) == @"121([h'E5A45F228800CC83854EABA1D2745F8F0C240665E2A9D467E1225648', 121([h'883698F6CABE9347F8DB1B9AE8DAB99CAFC4285E9E1107FE14FEB181', h'5374616B652056616C696461746F72']), h'883698F6CABE9347F8DB1B9AE8DAB99CAFC4285E9E1107FE14FEB181', 1680364053, 121([h'883698F6CABE9347F8DB1B9AE8DAB99CAFC4285E9E1107FE14FEB181', h'4D696B736120526577617264', 1, 900, 3600]), 3000000, 2, 121([h'4170706C65'])])"
   hash.blake2b_256(
     datum.validate.policy_id
-      |> bytearray.concat(datum.validate.name)
-      |> bytearray.concat(datum.policy_id),
+    |> bytearray.concat(datum.validate.name)
+    |> bytearray.concat(datum.policy_id),
   ) == #"2cc886a3c5cbbed1f85814a244b223f6bdf159399f0439834f4871fdcb991fde"
 }
 
