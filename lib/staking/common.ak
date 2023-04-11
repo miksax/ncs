@@ -1,6 +1,5 @@
 use aiken/bytearray
 use aiken/cbor
-use aiken/dict
 use aiken/hash.{Blake2b_224, Blake2b_256, Hash}
 use aiken/interval.{Finite}
 use aiken/list
