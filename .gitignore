@@ -14,7 +14,7 @@ dist-ssr
 data
 coverage
 *.local
-build
+# build
 
 /cypress/videos/
 /cypress/screenshots/
