@@ -561,7 +561,7 @@ export async function contractClose(
   const utxos = await owner.utxosByOutRef(collect);
   */
   const validateUnit: Unit = contract.datum.validate.policyId + contract.datum.validate.name;
-  const validateAmount = contract.datum.count + BigInt(validateUnit in contract.utxo.assets ? contract.utxo.assets[validateUnit] : BigInt(0));
+  const validateAmount = BigInt(5); //contract.datum.count + BigInt(validateUnit in contract.utxo.assets ? contract.utxo.assets[validateUnit] : BigInt(0));
   const validatePolicy = await createValidatePolicy(owner, debug);
   //const validatePolicyId = owner.utils.mintingPolicyToId(validatePolicy);
 
@@ -605,22 +605,25 @@ export async function contractAssetAdd(
   const contractAddress = lucid.utils.validatorToAddress(validator);
 
   const prev = databaseGetPrev(contract.database, name);
+  const utxos = [contract.utxo];
   let next = null;
 
   if (prev !== null) {
     next = prev.datum.next;
     prev.datum.next = name;
+    utxos.push(prev.utxo);
   } else {
     next = contract.datum.first;
     contract.datum.first = name;
   }
   contract.datum.count += BigInt(1);
+  /*
   const [utxo] = await lucid.utxosByOutRef([{
     txHash: contract.utxo.txHash,
     outputIndex: Number(contract.utxo.outputIndex),
   }]);
+  */
 
-  const utxos = [utxo];
 
   const nftDatumData: DatumLeaf = {
     name,
@@ -651,8 +654,8 @@ export async function contractAssetAdd(
       inline: Data.to<DatumMain>(contract.datum, DatumMain),
     }, {
       lovelace: contract.datum.lovelace,
-      [rewardUnit]: utxo.assets[rewardUnit],
-      [validateUnit]: utxo.assets[validateUnit] - BigInt(1),
+      [rewardUnit]: contract.utxo.assets[rewardUnit],
+      [validateUnit]: BigInt(contract.utxo.assets[validateUnit]) - BigInt(1),
     })
     // New record of NFT
     .payToContract(contractAddress, {
@@ -664,16 +667,16 @@ export async function contractAssetAdd(
 
   // If there is exist record, create new one
   if (prev !== null) {
-    const [utxo] = await lucid.utxosByOutRef([{
+/*    const [utxo] = await lucid.utxosByOutRef([{
       txHash: prev.utxo.txHash,
       outputIndex: Number(prev.utxo.outputIndex),
-    }]);
+    }]);*/
     console.log(prev.datum);
     txBuilder = txBuilder
-      .collectFrom([utxo], redeemer)
+      //.collectFrom([utxo], redeemer)
       .payToContract(contractAddress, {
         inline: Data.to<DatumLeaf>(prev.datum, DatumLeaf),
-      }, utxo.assets);
+      }, prev.utxo.assets);
   }
 
   const tx = await txBuilder
@@ -746,7 +749,7 @@ export async function contractAssetPayout(
 
 
   //const utxos = [utxo, leaf];
-  if (prev !== null) {
+  //if (prev !== null) {
     /*leaf_pred = utxo_query.find((u) =>
       u.txHash === prev.utxo.txHash &&
       u.outputIndex === Number(prev.utxo.outputIndex)
@@ -754,8 +757,8 @@ export async function contractAssetPayout(
     utxos.push(
       leaf_pred,
     );*/
-    utxos.push(prev.utxo);
-  }
+  //  utxos.push(prev.utxo);
+  //}
 
   const rewardUnit: Unit = contract.datum.reward.policyId +
     contract.datum.reward.name;
@@ -773,7 +776,11 @@ export async function contractAssetPayout(
       BigInt(1),
   };
 
-  console.log(assets);
+  console.log(contract.datum);
+  console.log(leaf.datum);
+  if(prev !== null) {
+    console.log(prev.datum);
+  }
 
   let txBuilder = lucid
     .newTx()

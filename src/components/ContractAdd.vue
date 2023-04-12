@@ -60,7 +60,7 @@ export default {
         async add(name: string) {
             const contract = this.contract as Contract;
             const lucid = await this.stakingStore.getWallet("staker");
-            const signedTx = await contractAssetAdd(contract, lucid, fromText(name), this.stakingStore.debug, true);
+            const signedTx = await contractAssetAdd(contract, lucid, fromText(name), this.stakingStore.debug, false);
 
             const txHash = await signedTx.submit();
             console.log(`Submitted transaction: ${txHash}`);

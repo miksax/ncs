@@ -33,6 +33,10 @@
                 <th>Reward amount</th>
                 <td>{{ leaf.datum.amount }}</td>
             </tr>
+            <tr>
+                <th>Next</th>
+                <td>{{ next }}</td>
+            </tr>
         </table>
     </div>
 </template>
@@ -61,6 +65,13 @@ export default {
         ...mapStores(stakingStore),
         name() {
             return toText(this.leaf.datum.name)
+        },
+        next() {
+            if(this.leaf.datum.next) {
+                return toText(this.leaf.datum.next);
+            } else {
+                return "null";
+            }
         },
         start() {
             return new Date(Number(this.leaf.datum.start)).toLocaleString();

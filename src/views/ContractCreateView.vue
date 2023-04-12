@@ -159,7 +159,7 @@ export default {
                 policyId:"",
                 amount: 1,
                 time: 60000,
-                timeout: 1800,
+                timeout: 1800000,
             }
         },
         asset: null,

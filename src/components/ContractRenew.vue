@@ -94,7 +94,7 @@ export default {
                 BigInt(Number(renewData.rewardAmount)),
                 BigInt(5),
                 this.stakingStore.debug,
-                true
+                false
             );
 
             const txHash = await signedTx.submit();
